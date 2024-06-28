@@ -40,7 +40,10 @@ def main(args):
         output_basename = f"{input_basename}_{audio_basename}"
         result_img_save_path = os.path.join(args.result_dir, output_basename) # related to video & audio inputs
         crop_coord_save_path = os.path.join(result_img_save_path, input_basename+".pkl") # only related to video input
+        input_latent_list_path = os.path.join(result_img_save_path, input_basename+"_latent.pkl")
         os.makedirs(result_img_save_path,exist_ok =True)
+        os.makedirs(crop_coord_save_path,exist_ok =True)
+        os.makedirs(input_latent_list_path,exist_ok =True)
         
         if args.output_vid_name is None:
             output_vid_name = os.path.join(args.result_dir, output_basename+".mp4")
@@ -82,14 +85,20 @@ def main(args):
                 
         i = 0
         input_latent_list = []
-        for bbox, frame in zip(coord_list, frame_list):
-            if bbox == coord_placeholder:
-                continue
-            x1, y1, x2, y2 = bbox
-            crop_frame = frame[y1:y2, x1:x2]
-            crop_frame = cv2.resize(crop_frame,(256,256),interpolation = cv2.INTER_LANCZOS4)
-            latents = vae.get_latents_for_unet(crop_frame)
-            input_latent_list.append(latents)
+        if args.use_stored_latent and os.path.exists(input_latent_list_path):
+            with open(input_latent_list_path,'rb') as f:
+                input_latent_list = pickle.load(f)
+        else:
+            for bbox, frame in zip(coord_list, frame_list):
+                if bbox == coord_placeholder:
+                    continue
+                x1, y1, x2, y2 = bbox
+                crop_frame = frame[y1:y2, x1:x2]
+                crop_frame = cv2.resize(crop_frame,(256,256),interpolation = cv2.INTER_LANCZOS4)
+                latents = vae.get_latents_for_unet(crop_frame)
+                input_latent_list.append(latents)
+            with open(input_latent_list_path, 'wb') as f:
+                pickle.dump(input_latent_list, f)
     
         # to smooth the first and the last frame
         frame_list_cycle = frame_list + frame_list[::-1]
@@ -145,16 +154,14 @@ if __name__ == "__main__":
     parser.add_argument("--inference_config", type=str, default="configs/inference/test_img.yaml")
     parser.add_argument("--bbox_shift", type=int, default=0)
     parser.add_argument("--result_dir", default='./results', help="path to output")
-
     parser.add_argument("--fps", type=int, default=25)
-    parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--output_vid_name", type=str, default=None)
-    parser.add_argument("--use_saved_coord",action="store_true",
-                        help='use saved coordinate to save time', default=True)
-    parser.add_argument("--use_float16",
-                        action="store_true",
-                        help="Whether use float16 to speed up inference",
-    )
+    parser.add_argument("--use_saved_coord",action="store_true", help='use saved coordinate to save time', 
+                        default=True)
+    parser.add_argument("--use_float16", action="store_true",
+                        help="Whether use float16 to speed up inference")
+    parser.add_argument("--use_stored_latent", action="store_true", default=True)
 
     args = parser.parse_args()
     main(args)
