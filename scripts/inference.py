@@ -39,11 +39,11 @@ def main(args):
         audio_basename  = os.path.basename(audio_path).split('.')[0]
         output_basename = f"{input_basename}_{audio_basename}"
         result_img_save_path = os.path.join(args.result_dir, output_basename) # related to video & audio inputs
-        crop_coord_save_path = os.path.join(result_img_save_path, input_basename+".pkl") # only related to video input
-        input_latent_list_path = os.path.join(result_img_save_path, input_basename+"_latent.pkl")
-        os.makedirs(result_img_save_path,exist_ok =True)
-        os.makedirs(crop_coord_save_path,exist_ok =True)
-        os.makedirs(input_latent_list_path,exist_ok =True)
+        crop_coord_save_path = os.path.join(args.result_dir, input_basename+".pkl") # only related to video input
+        input_latent_list_path = os.path.join(args.result_dir, input_basename+"_latent.pkl")
+        os.makedirs(result_img_save_path, exist_ok =True)
+        # os.makedirs(crop_coord_save_path, exist_ok =True)
+        # os.makedirs(input_latent_list_path, exist_ok =True)
         
         if args.output_vid_name is None:
             output_vid_name = os.path.join(args.result_dir, output_basename+".mp4")
