@@ -302,7 +302,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--batch_size", 
                         type=int, 
-                        default=4,
+                        default=16,
     )
     parser.add_argument("--skip_save_images",
                         action="store_true",
