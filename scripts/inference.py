@@ -86,6 +86,7 @@ def main(args):
         i = 0
         input_latent_list = []
         if args.use_stored_latent and os.path.exists(input_latent_list_path):
+            print("Using Cached Latent")
             with open(input_latent_list_path,'rb') as f:
                 input_latent_list = pickle.load(f)
         else:
