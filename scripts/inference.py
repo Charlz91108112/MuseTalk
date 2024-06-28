@@ -155,7 +155,7 @@ if __name__ == "__main__":
     parser.add_argument("--bbox_shift", type=int, default=0)
     parser.add_argument("--result_dir", default='./results', help="path to output")
     parser.add_argument("--fps", type=int, default=25)
-    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--output_vid_name", type=str, default=None)
     parser.add_argument("--use_saved_coord",action="store_true", help='use saved coordinate to save time', 
                         default=True)
