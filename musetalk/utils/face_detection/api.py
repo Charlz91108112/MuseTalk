@@ -29,9 +29,9 @@ class LandmarksType(Enum):
 
 class NetworkSize(Enum):
     # TINY = 1
-    # SMALL = 2
+    SMALL = 2
     # MEDIUM = 3
-    LARGE = 4
+    # LARGE = 4
 
     def __new__(cls, value):
         member = object.__new__(cls)
@@ -44,7 +44,7 @@ class NetworkSize(Enum):
 
 
 class FaceAlignment:
-    def __init__(self, landmarks_type, network_size=NetworkSize.LARGE,
+    def __init__(self, landmarks_type, network_size=NetworkSize.SMALL,
                  device='cuda', flip_input=False, face_detector='sfd', verbose=False):
         self.device = device
         self.flip_input = flip_input
