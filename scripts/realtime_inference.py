@@ -237,13 +237,13 @@ class Avatar:
         res_frame_queue = queue.Queue()
         self.idx = 0
         # # Create a sub-thread and start it
-        with ThreadPoolExecutor(max_workers=3) as executor:
-            executor.submit(self.process_frames, res_frame_queue, video_num, skip_save_images)
+        # with ThreadPoolExecutor(max_workers=3) as executor:
+        #     executor.submit(self.process_frames, res_frame_queue, video_num, skip_save_images)
             
 
 
-        # process_thread = threading.Thread(target=self.process_frames, args=(res_frame_queue, video_num, skip_save_images))
-        # process_thread.start()
+        process_thread = threading.Thread(target=self.process_frames, args=(res_frame_queue, video_num, skip_save_images))
+        process_thread.start()
 
         gen = datagen(whisper_chunks,
                       self.input_latent_list_cycle, 
@@ -265,7 +265,7 @@ class Avatar:
             for res_frame in recon:
                 res_frame_queue.put(res_frame)
         # Close the queue and sub-thread after all tasks are completed
-        # process_thread.join()
+        process_thread.join()
         
         if args.skip_save_images is True:
             print('Total process time of {} frames without saving images = {}s'.format(
