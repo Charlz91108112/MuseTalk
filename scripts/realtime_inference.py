@@ -142,7 +142,7 @@ class Avatar:
         else:
             print(f"copy files in {self.video_path}")
             files = os.listdir(self.video_path)
-            files.sort()
+            # files.sort()
             files = [file for file in files if file.split(".")[-1]=="png"]
             for filename in files:
                 shutil.copyfile(f"{self.video_path}/{filename}", f"{self.full_imgs_path}/{filename}")
@@ -150,36 +150,71 @@ class Avatar:
         
         print("extracting landmarks...")
         with ThreadPoolExecutor(max_workers=3) as executor:
-            coord_list, frame_list = executor.submit(get_landmark_and_bbox, input_img_list, self.bbox_shift).result()
+            coord_list, frame_list = zip(executor.submit(get_landmark_and_bbox, input_img_list, self.bbox_shift).result())
+            # coord_list, frame_list = executor.submit(get_landmark_and_bbox, input_img_list, self.bbox_shift).result()
         # coord_list, frame_list = get_landmark_and_bbox(input_img_list, self.bbox_shift)
-        input_latent_list = []
-        idx = -1
+        # input_latent_list = []
+        # idx = -1
         # maker if the bbox is not sufficient 
-        coord_placeholder = (0.0,0.0,0.0,0.0)
-        for bbox, frame in zip(coord_list, frame_list):
-            idx = idx + 1
-            if bbox == coord_placeholder:
-                continue
-            x1, y1, x2, y2 = bbox
-            crop_frame = frame[y1:y2, x1:x2]
-            resized_crop_frame = cv2.resize(crop_frame,(256, 256),interpolation = cv2.INTER_LANCZOS4)
-            latents = vae.get_latents_for_unet(resized_crop_frame)
-            input_latent_list.append(latents)
+        # coord_placeholder = (0.0,0.0,0.0,0.0)
+        
+        def get_input_latent_list(zipped_list):
+            input_latent_list = []
+            idx = -1
+            # maker if the bbox is not sufficient 
+            coord_placeholder = (0.0,0.0,0.0,0.0)
+            for bbox, frame in zipped_list:
+                idx = idx + 1
+                if bbox == coord_placeholder:
+                    continue
+                x1, y1, x2, y2 = bbox
+                crop_frame = frame[y1:y2, x1:x2]
+                resized_crop_frame = cv2.resize(crop_frame,(256, 256),interpolation = cv2.INTER_LANCZOS4)
+                latents = vae.get_latents_for_unet(resized_crop_frame)
+                input_latent_list.append(latents)
+            return input_latent_list
+        
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            input_latent_list = executor.submit(get_input_latent_list, zip(coord_list, frame_list)).result()
+
+        # for bbox, frame in zip(coord_list, frame_list):
+        #     idx = idx + 1
+        #     if bbox == coord_placeholder:
+        #         continue
+        #     x1, y1, x2, y2 = bbox
+        #     crop_frame = frame[y1:y2, x1:x2]
+        #     resized_crop_frame = cv2.resize(crop_frame,(256, 256),interpolation = cv2.INTER_LANCZOS4)
+        #     latents = vae.get_latents_for_unet(resized_crop_frame)
+        #     input_latent_list.append(latents)
 
         self.frame_list_cycle = frame_list + frame_list[::-1]
         self.coord_list_cycle = coord_list + coord_list[::-1]
         self.input_latent_list_cycle = input_latent_list + input_latent_list[::-1]
+
         self.mask_coords_list_cycle = []
         self.mask_list_cycle = []
 
-        for i,frame in enumerate(self.frame_list_cycle):
-            cv2.imwrite(f"{self.full_imgs_path}/{str(i).zfill(8)}.png",frame)
+        def get_mask_list_cycle():
+            for i,frame in enumerate(self.frame_list_cycle):
+                cv2.imwrite(f"{self.full_imgs_path}/{str(i).zfill(8)}.png",frame)
+                face_box = self.coord_list_cycle[i]
+                mask,crop_box = get_image_prepare_material(frame,face_box)
+                cv2.imwrite(f"{self.mask_out_path}/{str(i).zfill(8)}.png",mask)
+                self.mask_coords_list_cycle += [crop_box]
+                self.mask_list_cycle.append(mask)
+            return self.mask_coords_list_cycle, self.mask_list_cycle
+
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            self.mask_coords_list_cycle, self.mask_list_cycle = executor.submit(get_mask_list_cycle).result()
+
+        # for i,frame in enumerate(self.frame_list_cycle):
+        #     cv2.imwrite(f"{self.full_imgs_path}/{str(i).zfill(8)}.png",frame)
             
-            face_box = self.coord_list_cycle[i]
-            mask,crop_box = get_image_prepare_material(frame,face_box)
-            cv2.imwrite(f"{self.mask_out_path}/{str(i).zfill(8)}.png",mask)
-            self.mask_coords_list_cycle += [crop_box]
-            self.mask_list_cycle.append(mask)
+        #     face_box = self.coord_list_cycle[i]
+        #     mask,crop_box = get_image_prepare_material(frame,face_box)
+        #     cv2.imwrite(f"{self.mask_out_path}/{str(i).zfill(8)}.png",mask)
+        #     self.mask_coords_list_cycle += [crop_box]
+        #     self.mask_list_cycle.append(mask)
             
         with open(self.mask_coords_path, 'wb') as f:
             pickle.dump(self.mask_coords_list_cycle, f)
@@ -245,12 +280,20 @@ class Avatar:
         process_thread = threading.Thread(target=self.process_frames, args=(res_frame_queue, video_num, skip_save_images))
         process_thread.start()
 
-        gen = datagen(whisper_chunks,
-                      self.input_latent_list_cycle, 
-                      self.batch_size)
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            gen = executor.submit(datagen, whisper_chunks, self.input_latent_list_cycle, self.batch_size)
+
+        # gen = datagen(whisper_chunks,
+        #               self.input_latent_list_cycle, 
+        #               self.batch_size)
+
         start_time = time.time()
         res_frame_list = []
-        
+
+        def put_to_res_frame_queue(recon):
+            for res_frame in recon:
+                res_frame_queue.put(res_frame)
+
         for i, (whisper_batch,latent_batch) in enumerate(gen): # total=int(np.ceil(float(video_num)/self.batch_size))
             audio_feature_batch = torch.from_numpy(whisper_batch)
             audio_feature_batch = audio_feature_batch.to(device=unet.device,
@@ -262,8 +305,12 @@ class Avatar:
                                       timesteps, 
                                       encoder_hidden_states=audio_feature_batch).sample
             recon = vae.decode_latents(pred_latents)
-            for res_frame in recon:
-                res_frame_queue.put(res_frame)
+
+            with ThreadPoolExecutor(max_workers=3) as executor:
+                executor.submit(put_to_res_frame_queue, recon)
+                
+            # for res_frame in recon:
+            #     res_frame_queue.put(res_frame)
         # Close the queue and sub-thread after all tasks are completed
         process_thread.join()
         
