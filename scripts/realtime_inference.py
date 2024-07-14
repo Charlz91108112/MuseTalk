@@ -294,20 +294,24 @@ class Avatar:
             for res_frame in recon:
                 res_frame_queue.put(res_frame)
 
-        for i, (whisper_batch,latent_batch) in enumerate(gen): # total=int(np.ceil(float(video_num)/self.batch_size))
-            audio_feature_batch = torch.from_numpy(whisper_batch)
-            audio_feature_batch = audio_feature_batch.to(device=unet.device,
-                                                         dtype=unet.model.dtype)
-            audio_feature_batch = pe(audio_feature_batch)
-            latent_batch = latent_batch.to(dtype=unet.model.dtype)
+        def final_process(gen):
+            for i, (whisper_batch,latent_batch) in enumerate(gen): # total=int(np.ceil(float(video_num)/self.batch_size))
+                audio_feature_batch = torch.from_numpy(whisper_batch)
+                audio_feature_batch = audio_feature_batch.to(device=unet.device,
+                                                            dtype=unet.model.dtype)
+                audio_feature_batch = pe(audio_feature_batch)
+                latent_batch = latent_batch.to(dtype=unet.model.dtype)
 
-            pred_latents = unet.model(latent_batch, 
-                                      timesteps, 
-                                      encoder_hidden_states=audio_feature_batch).sample
-            recon = vae.decode_latents(pred_latents)
+                pred_latents = unet.model(latent_batch, 
+                                        timesteps, 
+                                        encoder_hidden_states=audio_feature_batch).sample
+                recon = vae.decode_latents(pred_latents)
 
-            with ThreadPoolExecutor(max_workers=3) as executor:
-                executor.submit(put_to_res_frame_queue, recon)
+                with ThreadPoolExecutor(max_workers=3) as executor:
+                    executor.submit(put_to_res_frame_queue, recon)
+                    
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            executor.submit(final_process, gen)
 
             # for res_frame in recon:
             #     res_frame_queue.put(res_frame)
