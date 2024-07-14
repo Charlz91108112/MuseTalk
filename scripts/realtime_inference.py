@@ -150,7 +150,7 @@ class Avatar:
         
         print("extracting landmarks...")
         with ThreadPoolExecutor(max_workers=3) as executor:
-            coord_list, frame_list = zip(executor.submit(get_landmark_and_bbox, input_img_list, self.bbox_shift).result())
+            coord_list, frame_list = executor.submit(get_landmark_and_bbox, input_img_list, self.bbox_shift).result()
             # coord_list, frame_list = executor.submit(get_landmark_and_bbox, input_img_list, self.bbox_shift).result()
         # coord_list, frame_list = get_landmark_and_bbox(input_img_list, self.bbox_shift)
         # input_latent_list = []
@@ -308,7 +308,7 @@ class Avatar:
 
             with ThreadPoolExecutor(max_workers=3) as executor:
                 executor.submit(put_to_res_frame_queue, recon)
-                
+
             # for res_frame in recon:
             #     res_frame_queue.put(res_frame)
         # Close the queue and sub-thread after all tasks are completed
