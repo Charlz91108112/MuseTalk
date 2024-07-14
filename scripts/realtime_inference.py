@@ -251,7 +251,7 @@ class Avatar:
         start_time = time.time()
         res_frame_list = []
         
-        for i, (whisper_batch,latent_batch) in enumerate(gen,total=int(np.ceil(float(video_num)/self.batch_size))):
+        for i, (whisper_batch,latent_batch) in enumerate(gen): # total=int(np.ceil(float(video_num)/self.batch_size))
             audio_feature_batch = torch.from_numpy(whisper_batch)
             audio_feature_batch = audio_feature_batch.to(device=unet.device,
                                                          dtype=unet.model.dtype)
