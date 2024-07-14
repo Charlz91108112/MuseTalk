@@ -281,7 +281,7 @@ class Avatar:
         process_thread.start()
 
         with ThreadPoolExecutor(max_workers=3) as executor:
-            gen = executor.submit(datagen, whisper_chunks, self.input_latent_list_cycle, self.batch_size)
+            gen = executor.submit(datagen, whisper_chunks, self.input_latent_list_cycle, self.batch_size).result()
 
         # gen = datagen(whisper_chunks,
         #               self.input_latent_list_cycle, 
