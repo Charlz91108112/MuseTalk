@@ -162,7 +162,7 @@ class Avatar:
                 continue
             x1, y1, x2, y2 = bbox
             crop_frame = frame[y1:y2, x1:x2]
-            resized_crop_frame = cv2.resize(crop_frame,(200, 200),interpolation = cv2.INTER_LANCZOS4)
+            resized_crop_frame = cv2.resize(crop_frame,(256, 256),interpolation = cv2.INTER_LANCZOS4)
             latents = vae.get_latents_for_unet(resized_crop_frame)
             input_latent_list.append(latents)
 

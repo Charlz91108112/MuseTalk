@@ -95,7 +95,7 @@ def main(args):
                     continue
                 x1, y1, x2, y2 = bbox
                 crop_frame = frame[y1:y2, x1:x2]
-                crop_frame = cv2.resize(crop_frame,(200, 200),interpolation = cv2.INTER_LANCZOS4)
+                crop_frame = cv2.resize(crop_frame,(256, 256),interpolation = cv2.INTER_LANCZOS4)
                 latents = vae.get_latents_for_unet(crop_frame)
                 input_latent_list.append(latents)
             with open(input_latent_list_path, 'wb') as f:

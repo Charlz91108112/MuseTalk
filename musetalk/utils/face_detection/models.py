@@ -158,16 +158,16 @@ class FAN(nn.Module):
         # Stacking part
         for hg_module in range(self.num_modules):
             self.add_module('m' + str(hg_module), HourGlass(1, 4, 256))
-            self.add_module('top_m_' + str(hg_module), ConvBlock(200, 200))
+            self.add_module('top_m_' + str(hg_module), ConvBlock(256, 256))
             self.add_module('conv_last' + str(hg_module),
-                            nn.Conv2d(200, 200, kernel_size=1, stride=1, padding=0))
+                            nn.Conv2d(256, 256, kernel_size=1, stride=1, padding=0))
             self.add_module('bn_end' + str(hg_module), nn.BatchNorm2d(256))
             self.add_module('l' + str(hg_module), nn.Conv2d(256,
                                                             68, kernel_size=1, stride=1, padding=0))
 
             if hg_module < self.num_modules - 1:
                 self.add_module(
-                    'bl' + str(hg_module), nn.Conv2d(200, 200, kernel_size=1, stride=1, padding=0))
+                    'bl' + str(hg_module), nn.Conv2d(256, 256, kernel_size=1, stride=1, padding=0))
                 self.add_module('al' + str(hg_module), nn.Conv2d(68,
                                                                  256, kernel_size=1, stride=1, padding=0))
 

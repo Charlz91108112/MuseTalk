@@ -29,8 +29,8 @@ class s3fd(nn.Module):
         self.conv2_2 = nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1)
 
         self.conv3_1 = nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1)
-        self.conv3_2 = nn.Conv2d(200, 200, kernel_size=3, stride=1, padding=1)
-        self.conv3_3 = nn.Conv2d(200, 200, kernel_size=3, stride=1, padding=1)
+        self.conv3_2 = nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1)
+        self.conv3_3 = nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1)
 
         self.conv4_1 = nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=1)
         self.conv4_2 = nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1)

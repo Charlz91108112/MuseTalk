@@ -232,8 +232,8 @@ class BiSeNet(nn.Module):
         super(BiSeNet, self).__init__()
         self.cp = ContextPath(resnet_path)
         ## here self.sp is deleted
-        self.ffm = FeatureFusionModule(200, 200)
-        self.conv_out = BiSeNetOutput(200, 200, n_classes)
+        self.ffm = FeatureFusionModule(256, 256)
+        self.conv_out = BiSeNetOutput(256, 256, n_classes)
         self.conv_out16 = BiSeNetOutput(128, 64, n_classes)
         self.conv_out32 = BiSeNetOutput(128, 64, n_classes)
         self.init_weight()
