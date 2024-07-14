@@ -149,7 +149,7 @@ class Avatar:
         input_img_list = glob.glob(os.path.join(self.full_imgs_path, '*.[jpJP][pnPN]*[gG]'))
         
         print("extracting landmarks...")
-        with ThreadPoolExecutor(max_workers=32) as executor:
+        with ThreadPoolExecutor(max_workers=3) as executor:
             coord_list, frame_list = executor.submit(get_landmark_and_bbox, (input_img_list, self.bbox_shift)).result()
         # coord_list, frame_list = get_landmark_and_bbox(input_img_list, self.bbox_shift)
         input_latent_list = []
@@ -237,8 +237,8 @@ class Avatar:
         res_frame_queue = queue.Queue()
         self.idx = 0
         # # Create a sub-thread and start it
-        with ThreadPoolExecutor(max_workers=32) as executor:
-            executor.submit(self.process_frames, (res_frame_queue, video_num, skip_save_images))
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            executor.submit(self.process_frames, res_frame_queue, video_num, skip_save_images)
             
 
 
