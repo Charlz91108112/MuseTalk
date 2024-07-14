@@ -10,7 +10,7 @@ import json
 from mmpose.apis import inference_topdown, init_model
 from mmpose.structures import merge_data_samples
 import torch
-from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor
 
 # initialize the mmpose model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -35,9 +35,11 @@ def resize_landmark(landmark, w, h, new_w, new_h):
 def read_imgs(img_list):
     frames = []
     print('reading images...')
-    for img_path in tqdm(img_list):
-        frame = cv2.imread(img_path)
-        frames.append(frame)
+    with ThreadPoolExecutor(max_workers=32) as executor:
+        frames = list(executor.map(cv2.imread, img_list))
+    # for img_path in img_list:
+    #     frame = cv2.imread(img_path)
+    #     frames.append(frame)
     return frames
 
 def get_bbox_range(img_list,upperbondrange =0):
@@ -52,12 +54,12 @@ def get_bbox_range(img_list,upperbondrange =0):
         print('get key_landmark and face bounding boxes with the default value')
     average_range_minus = []
     average_range_plus = []
-    for fb in tqdm(batches):
+    for fb in batches:
         results = inference_topdown(model, np.asarray(fb)[0])
         results = merge_data_samples(results)
         keypoints = results.pred_instances.keypoints
         face_land_mark= keypoints[0][23:91]
-        face_land_mark = face_land_mark.astype(np.int32)
+        face_land_mark = face_land_mark.astype(np.int16)
         
         # get bounding boxes by face detetion
         bbox = fa.get_detections_for_batch(np.asarray(fb))
@@ -93,12 +95,12 @@ def get_landmark_and_bbox(img_list,upperbondrange =0):
         print('get key_landmark and face bounding boxes with the default value')
     average_range_minus = []
     average_range_plus = []
-    for fb in tqdm(batches):
+    for fb in batches:
         results = inference_topdown(model, np.asarray(fb)[0])
         results = merge_data_samples(results)
         keypoints = results.pred_instances.keypoints
         face_land_mark= keypoints[0][23:91]
-        face_land_mark = face_land_mark.astype(np.int32)
+        face_land_mark = face_land_mark.astype(np.int16)
         
         # get bounding boxes by face detetion
         bbox = fa.get_detections_for_batch(np.asarray(fb))

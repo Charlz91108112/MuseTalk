@@ -7,7 +7,6 @@ import torch
 import glob
 import pickle
 import sys
-from tqdm import tqdm
 import copy
 import json
 from musetalk.utils.utils import get_file_type,get_video_fps,datagen
@@ -18,6 +17,7 @@ import shutil
 
 import threading
 import queue
+from concurrent.futures import ThreadPoolExecutor
 
 import time
 
@@ -86,13 +86,13 @@ class Avatar:
                     self.input_latent_list_cycle = torch.load(self.latents_out_path)
                     with open(self.coords_path, 'rb') as f:
                         self.coord_list_cycle = pickle.load(f)
-                    input_img_list = glob.glob(os.path.join(self.full_imgs_path, '*.[jpJP][pnPN]*[gG]'))
-                    input_img_list = sorted(input_img_list, key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
+                        input_img_list = glob.glob(os.path.join(self.full_imgs_path, '*.[jpJP][pnPN]*[gG]'))
+                    # input_img_list = sorted(input_img_list, key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
                     self.frame_list_cycle = read_imgs(input_img_list)
                     with open(self.mask_coords_path, 'rb') as f:
                         self.mask_coords_list_cycle = pickle.load(f)
                     input_mask_list = glob.glob(os.path.join(self.mask_out_path, '*.[jpJP][pnPN]*[gG]'))
-                    input_mask_list = sorted(input_mask_list, key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
+                    # input_mask_list = sorted(input_mask_list, key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
                     self.mask_list_cycle = read_imgs(input_mask_list)
             else:
                 print("*********************************")
@@ -124,12 +124,12 @@ class Avatar:
                 with open(self.coords_path, 'rb') as f:
                     self.coord_list_cycle = pickle.load(f)
                 input_img_list = glob.glob(os.path.join(self.full_imgs_path, '*.[jpJP][pnPN]*[gG]'))
-                input_img_list = sorted(input_img_list, key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
+                # input_img_list = sorted(input_img_list, key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
                 self.frame_list_cycle = read_imgs(input_img_list)
                 with open(self.mask_coords_path, 'rb') as f:
                     self.mask_coords_list_cycle = pickle.load(f)
                 input_mask_list = glob.glob(os.path.join(self.mask_out_path, '*.[jpJP][pnPN]*[gG]'))
-                input_mask_list = sorted(input_mask_list, key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
+                # input_mask_list = sorted(input_mask_list, key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
                 self.mask_list_cycle = read_imgs(input_mask_list)
     
     def prepare_material(self):
@@ -146,10 +146,12 @@ class Avatar:
             files = [file for file in files if file.split(".")[-1]=="png"]
             for filename in files:
                 shutil.copyfile(f"{self.video_path}/{filename}", f"{self.full_imgs_path}/{filename}")
-        input_img_list = sorted(glob.glob(os.path.join(self.full_imgs_path, '*.[jpJP][pnPN]*[gG]')))
+        input_img_list = glob.glob(os.path.join(self.full_imgs_path, '*.[jpJP][pnPN]*[gG]'))
         
         print("extracting landmarks...")
-        coord_list, frame_list = get_landmark_and_bbox(input_img_list, self.bbox_shift)
+        with ThreadPoolExecutor(max_workers=32) as executor:
+            coord_list, frame_list = executor.submit(get_landmark_and_bbox, input_img_list, self.bbox_shift).result()
+        # coord_list, frame_list = get_landmark_and_bbox(input_img_list, self.bbox_shift)
         input_latent_list = []
         idx = -1
         # maker if the bbox is not sufficient 
@@ -160,7 +162,7 @@ class Avatar:
                 continue
             x1, y1, x2, y2 = bbox
             crop_frame = frame[y1:y2, x1:x2]
-            resized_crop_frame = cv2.resize(crop_frame,(256,256),interpolation = cv2.INTER_LANCZOS4)
+            resized_crop_frame = cv2.resize(crop_frame,(200,200),interpolation = cv2.INTER_LANCZOS4)
             latents = vae.get_latents_for_unet(resized_crop_frame)
             input_latent_list.append(latents)
 
@@ -170,7 +172,7 @@ class Avatar:
         self.mask_coords_list_cycle = []
         self.mask_list_cycle = []
 
-        for i,frame in enumerate(tqdm(self.frame_list_cycle)):
+        for i,frame in enumerate(self.frame_list_cycle):
             cv2.imwrite(f"{self.full_imgs_path}/{str(i).zfill(8)}.png",frame)
             
             face_box = self.coord_list_cycle[i]
@@ -235,8 +237,13 @@ class Avatar:
         res_frame_queue = queue.Queue()
         self.idx = 0
         # # Create a sub-thread and start it
-        process_thread = threading.Thread(target=self.process_frames, args=(res_frame_queue, video_num, skip_save_images))
-        process_thread.start()
+        with ThreadPoolExecutor(max_workers=32) as executor:
+            executor.submit(self.process_frames, res_frame_queue, video_num, skip_save_images)
+            
+
+
+        # process_thread = threading.Thread(target=self.process_frames, args=(res_frame_queue, video_num, skip_save_images))
+        # process_thread.start()
 
         gen = datagen(whisper_chunks,
                       self.input_latent_list_cycle, 
@@ -244,7 +251,7 @@ class Avatar:
         start_time = time.time()
         res_frame_list = []
         
-        for i, (whisper_batch,latent_batch) in enumerate(tqdm(gen,total=int(np.ceil(float(video_num)/self.batch_size)))):
+        for i, (whisper_batch,latent_batch) in enumerate(gen,total=int(np.ceil(float(video_num)/self.batch_size))):
             audio_feature_batch = torch.from_numpy(whisper_batch)
             audio_feature_batch = audio_feature_batch.to(device=unet.device,
                                                          dtype=unet.model.dtype)
@@ -258,7 +265,7 @@ class Avatar:
             for res_frame in recon:
                 res_frame_queue.put(res_frame)
         # Close the queue and sub-thread after all tasks are completed
-        process_thread.join()
+        # process_thread.join()
         
         if args.skip_save_images is True:
             print('Total process time of {} frames without saving images = {}s'.format(
