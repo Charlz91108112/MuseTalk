@@ -12,7 +12,10 @@ except BaseException:
 
 from .models import FAN, ResNetDepth
 from .utils import *
+from concurrent.futures import ThreadPoolExecutor
 
+face_detector_module = __import__('face_detection.detection.' + 'sfd',
+                                          globals(), locals(), ['sfd'], 0)
 
 class LandmarksType(Enum):
     """Enum class defining the type of landmarks to detect.
@@ -46,6 +49,7 @@ class NetworkSize(Enum):
 class FaceAlignment:
     def __init__(self, landmarks_type, network_size=NetworkSize.SMALL,
                  device='cuda', flip_input=False, face_detector='sfd', verbose=False):
+        
         self.device = device
         self.flip_input = flip_input
         self.landmarks_type = landmarks_type
@@ -63,8 +67,8 @@ class FaceAlignment:
 
 
         # Get the face detector
-        face_detector_module = __import__('face_detection.detection.' + face_detector,
-                                          globals(), locals(), [face_detector], 0)
+        # face_detector_module = __import__('face_detection.detection.' + face_detector,
+        #                                   globals(), locals(), [face_detector], 0)
         
         self.face_detector = face_detector_module.FaceDetector(device=device, verbose=verbose)
 
@@ -159,33 +163,38 @@ class YOLOv8_face:
         return det_bboxes, det_conf, det_classid, landmarks
 
     def post_process(self, preds, scale_h, scale_w, padh, padw):
-        bboxes, scores, landmarks = [], [], []
-        for i, pred in enumerate(preds):
-            stride = int(self.input_height/pred.shape[2])
-            pred = pred.transpose((0, 2, 3, 1))
-            
-            box = pred[..., :self.reg_max * 4]
-            cls = 1 / (1 + np.exp(-pred[..., self.reg_max * 4:-15])).reshape((-1,1))
-            kpts = pred[..., -15:].reshape((-1,15)) ### x1,y1,score1, ..., x5,y5,score5
+        def get_bbox_scores_landmarks(preds, scale_h, scale_w, padh, padw):
+            bboxes, scores, landmarks = [], [], []
+            for i, pred in enumerate(preds):
+                stride = int(self.input_height/pred.shape[2])
+                pred = pred.transpose((0, 2, 3, 1))
+                
+                box = pred[..., :self.reg_max * 4]
+                cls = 1 / (1 + np.exp(-pred[..., self.reg_max * 4:-15])).reshape((-1,1))
+                kpts = pred[..., -15:].reshape((-1,15)) ### x1,y1,score1, ..., x5,y5,score5
 
-            # tmp = box.reshape(self.feats_hw[i][0], self.feats_hw[i][1], 4, self.reg_max)
-            tmp = box.reshape(-1, 4, self.reg_max)
-            bbox_pred = self.softmax(tmp, axis=-1)
-            bbox_pred = np.dot(bbox_pred, self.project).reshape((-1,4))
+                # tmp = box.reshape(self.feats_hw[i][0], self.feats_hw[i][1], 4, self.reg_max)
+                tmp = box.reshape(-1, 4, self.reg_max)
+                bbox_pred = self.softmax(tmp, axis=-1)
+                bbox_pred = np.dot(bbox_pred, self.project).reshape((-1,4))
 
-            bbox = self.distance2bbox(self.anchors[stride], bbox_pred, max_shape=(self.input_height, self.input_width)) * stride
-            kpts[:, 0::3] = (kpts[:, 0::3] * 2.0 + (self.anchors[stride][:, 0].reshape((-1,1)) - 0.5)) * stride
-            kpts[:, 1::3] = (kpts[:, 1::3] * 2.0 + (self.anchors[stride][:, 1].reshape((-1,1)) - 0.5)) * stride
-            kpts[:, 2::3] = 1 / (1+np.exp(-kpts[:, 2::3]))
+                bbox = self.distance2bbox(self.anchors[stride], bbox_pred, max_shape=(self.input_height, self.input_width)) * stride
+                kpts[:, 0::3] = (kpts[:, 0::3] * 2.0 + (self.anchors[stride][:, 0].reshape((-1,1)) - 0.5)) * stride
+                kpts[:, 1::3] = (kpts[:, 1::3] * 2.0 + (self.anchors[stride][:, 1].reshape((-1,1)) - 0.5)) * stride
+                kpts[:, 2::3] = 1 / (1+np.exp(-kpts[:, 2::3]))
 
-            bbox -= np.array([[padw, padh, padw, padh]])  ###合理使用广播法则
-            bbox *= np.array([[scale_w, scale_h, scale_w, scale_h]])
-            kpts -= np.tile(np.array([padw, padh, 0]), 5).reshape((1,15))
-            kpts *= np.tile(np.array([scale_w, scale_h, 1]), 5).reshape((1,15))
+                bbox -= np.array([[padw, padh, padw, padh]])  ###合理使用广播法则
+                bbox *= np.array([[scale_w, scale_h, scale_w, scale_h]])
+                kpts -= np.tile(np.array([padw, padh, 0]), 5).reshape((1,15))
+                kpts *= np.tile(np.array([scale_w, scale_h, 1]), 5).reshape((1,15))
 
-            bboxes.append(bbox)
-            scores.append(cls)
-            landmarks.append(kpts)
+                bboxes.append(bbox)
+                scores.append(cls)
+                landmarks.append(kpts)
+            return bboxes, scores, landmarks
+        
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            bboxes, scores, landmarks = executor.submits(get_bbox_scores_landmarks, preds, scale_h, scale_w, padh, padw).result()
 
         bboxes = np.concatenate(bboxes, axis=0)
         scores = np.concatenate(scores, axis=0)
