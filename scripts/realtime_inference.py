@@ -149,7 +149,7 @@ class Avatar:
         input_img_list = glob.glob(os.path.join(self.full_imgs_path, '*.[jpJP][pnPN]*[gG]'))
         
         print("extracting landmarks...")
-        with ThreadPoolExecutor(max_workers=3) as executor:
+        with ThreadPoolExecutor(max_workers=32) as executor:
             coord_list, frame_list = executor.submit(get_landmark_and_bbox, input_img_list, self.bbox_shift).result()
             # coord_list, frame_list = executor.submit(get_landmark_and_bbox, input_img_list, self.bbox_shift).result()
         # coord_list, frame_list = get_landmark_and_bbox(input_img_list, self.bbox_shift)
@@ -174,7 +174,7 @@ class Avatar:
                 input_latent_list.append(latents)
             return input_latent_list
         
-        with ThreadPoolExecutor(max_workers=3) as executor:
+        with ThreadPoolExecutor(max_workers=32) as executor:
             input_latent_list = executor.submit(get_input_latent_list, zip(coord_list, frame_list)).result()
 
         # for bbox, frame in zip(coord_list, frame_list):
@@ -204,7 +204,7 @@ class Avatar:
                 self.mask_list_cycle.append(mask)
             return self.mask_coords_list_cycle, self.mask_list_cycle
 
-        with ThreadPoolExecutor(max_workers=3) as executor:
+        with ThreadPoolExecutor(max_workers=32) as executor:
             self.mask_coords_list_cycle, self.mask_list_cycle = executor.submit(get_mask_list_cycle).result()
 
         # for i,frame in enumerate(self.frame_list_cycle):
@@ -272,7 +272,7 @@ class Avatar:
         res_frame_queue = queue.Queue()
         self.idx = 0
         # # Create a sub-thread and start it
-        # with ThreadPoolExecutor(max_workers=3) as executor:
+        # with ThreadPoolExecutor(max_workers=32) as executor:
         #     executor.submit(self.process_frames, res_frame_queue, video_num, skip_save_images)
             
 
@@ -280,7 +280,7 @@ class Avatar:
         process_thread = threading.Thread(target=self.process_frames, args=(res_frame_queue, video_num, skip_save_images))
         process_thread.start()
 
-        with ThreadPoolExecutor(max_workers=3) as executor:
+        with ThreadPoolExecutor(max_workers=32) as executor:
             gen = executor.submit(datagen, whisper_chunks, self.input_latent_list_cycle, self.batch_size).result()
 
         # gen = datagen(whisper_chunks,
@@ -307,10 +307,10 @@ class Avatar:
                                         encoder_hidden_states=audio_feature_batch).sample
                 recon = vae.decode_latents(pred_latents)
 
-                with ThreadPoolExecutor(max_workers=3) as executor:
+                with ThreadPoolExecutor(max_workers=32) as executor:
                     executor.submit(put_to_res_frame_queue, recon)
-                    
-        with ThreadPoolExecutor(max_workers=3) as executor:
+
+        with ThreadPoolExecutor(max_workers=32) as executor:
             executor.submit(final_process, gen)
 
             # for res_frame in recon:
