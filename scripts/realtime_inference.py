@@ -150,7 +150,7 @@ class Avatar:
         
         print("extracting landmarks...")
         with ThreadPoolExecutor(max_workers=3) as executor:
-            coord_list, frame_list = executor.submit(get_landmark_and_bbox, (input_img_list, self.bbox_shift)).result()
+            coord_list, frame_list = executor.submit(get_landmark_and_bbox, input_img_list, self.bbox_shift).result()
         # coord_list, frame_list = get_landmark_and_bbox(input_img_list, self.bbox_shift)
         input_latent_list = []
         idx = -1
