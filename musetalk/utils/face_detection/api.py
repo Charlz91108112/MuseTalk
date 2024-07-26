@@ -193,7 +193,7 @@ class YOLOv8_face:
                 landmarks.append(kpts)
             return bboxes, scores, landmarks
         
-        with ThreadPoolExecutor(max_workers=32) as executor:
+        with ThreadPoolExecutor(max_workers=3) as executor:
             bboxes, scores, landmarks = executor.submits(get_bbox_scores_landmarks, preds, scale_h, scale_w, padh, padw).result()
 
         bboxes = np.concatenate(bboxes, axis=0)
