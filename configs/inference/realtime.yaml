@@ -1,6 +1,6 @@
 avator_1:
  preparation: True
  bbox_shift: 5
- video_path: "data/video/Gnomi-avatar.mp4"
+ video_path: "data/video/Gnomi-real.mp4"
  audio_clips:
      audio_0: "data/audio/yongen.wav"
