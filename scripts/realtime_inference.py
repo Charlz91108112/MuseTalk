@@ -87,12 +87,12 @@ class Avatar:
                     with open(self.coords_path, 'rb') as f:
                         self.coord_list_cycle = pickle.load(f)
                         input_img_list = glob.glob(os.path.join(self.full_imgs_path, '*.[jpJP][pnPN]*[gG]'))
-                    # input_img_list = sorted(input_img_list, key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
+                    input_img_list = sorted(input_img_list, key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
                     self.frame_list_cycle = read_imgs(input_img_list)
                     with open(self.mask_coords_path, 'rb') as f:
                         self.mask_coords_list_cycle = pickle.load(f)
                     input_mask_list = glob.glob(os.path.join(self.mask_out_path, '*.[jpJP][pnPN]*[gG]'))
-                    # input_mask_list = sorted(input_mask_list, key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
+                    input_mask_list = sorted(input_mask_list, key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
                     self.mask_list_cycle = read_imgs(input_mask_list)
             else:
                 print("*********************************")
@@ -124,12 +124,12 @@ class Avatar:
                 with open(self.coords_path, 'rb') as f:
                     self.coord_list_cycle = pickle.load(f)
                 input_img_list = glob.glob(os.path.join(self.full_imgs_path, '*.[jpJP][pnPN]*[gG]'))
-                # input_img_list = sorted(input_img_list, key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
+                input_img_list = sorted(input_img_list, key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
                 self.frame_list_cycle = read_imgs(input_img_list)
                 with open(self.mask_coords_path, 'rb') as f:
                     self.mask_coords_list_cycle = pickle.load(f)
                 input_mask_list = glob.glob(os.path.join(self.mask_out_path, '*.[jpJP][pnPN]*[gG]'))
-                # input_mask_list = sorted(input_mask_list, key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
+                input_mask_list = sorted(input_mask_list, key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
                 self.mask_list_cycle = read_imgs(input_mask_list)
     
     def prepare_material(self):
